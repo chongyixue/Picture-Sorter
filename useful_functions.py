@@ -14,13 +14,27 @@ import matplotlib.image as mpimg
 
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename, askdirectory
+# import pyheif 
 
 import os, shutil
 
+def guess_heic_date(filename):
+    with open(filename,mode='rb') as file:
+        f1 = file.read()
+        f2 = f1.decode(encoding='UTF-8',errors='replace')
+    for i,l in enumerate(f2):
+        if l == ':' and f2[i+3] == ':' and f2[i+9]==':' and f2[i+12] == ':':
+            return f2[i-4:i+15]
+    return
 
 def display_pic_metadata(imagename):
     try:
-        image = Image.open(imagename)
+        if imagename.split('.')[-1] == 'heic':
+            exifdic = {}
+            exifdic['DateTime'] = guess_heic_date(imagename)
+            return exifdic
+        else:
+            image = Image.open(imagename)
     except:
         print("Cannot read ",imagename)
         return {}
@@ -31,7 +45,10 @@ def display_pic_metadata(imagename):
         tag = TAGS.get(tag_id,tag_id)
         data= exifdata.get(tag_id)
         if isinstance(data,bytes):
-            data = data.decode()
+            try:
+                data = data.decode('UTF8','replace')
+            except Exception as e: print(e)
+
         # print(f"{tag:25}:{data}")
         exifdic[tag]=data
     return exifdic
@@ -130,8 +147,10 @@ def unpack_subdirectories(directory):
         for file in files:
             fullfilepath = os.path.join(sd,file)
             print("moving ",fullfilepath," to ",directory)
-            shutil.move(fullfilepath,directory)
-
+            try:
+                shutil.move(fullfilepath,directory)
+            except:
+                pass
         subsub = makefullpath(subsub,sd)
         subdir = subdir + subsub
     
